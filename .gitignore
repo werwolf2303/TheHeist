@@ -1,0 +1,25 @@
+# Build outputs
+build/
+*/build/
+**/.gradle/
+
+
+# Android local config
+local.properties
+
+# User save data
+Documents/
+
+# Web port
+web/site/node_modules/
+web/site/dist/
+web/site/teavm-dist/
+web/site/public/assets/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+assets/
+docs/

@@ -1,0 +1,33 @@
+// The desktop port: Java2D for drawing, javax.sound for sound, a window for input.
+//   ./gradlew :desktop:run --args='--import "/path/to/iPhone - The Heist.ipa"'   first time, then without --import
+//   ./gradlew :desktop:jar                                                       builds desktop/build/libs/theheist.jar
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':core')
+    implementation project(':tools')      // the IPA importer behind --import
+    // the desktop front-camera self-view (see CameraPreview); grabs frames synchronously on demand via OpenCV,
+    // which avoids the Sarxos webcam-capture library's unmaintained native driver and its background polling
+    // loop that would drift further and further behind real time under any load
+    implementation 'org.bytedeco:javacv-platform:1.5.11'
+}
+
+application {
+    mainClass = 'heist.desktop.Main'
+}
+
+// `gradlew :desktop:run` starts in the project root, where assets/ and the save live
+tasks.named('run') {
+    workingDir = rootProject.projectDir
+}
+
+// one runnable jar with the game and the importer inside
+tasks.named('jar') {
+    archiveFileName = 'theheist.jar'
+    manifest { attributes 'Main-Class': 'heist.desktop.Main' }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    dependsOn configurations.runtimeClasspath          // build ':core' and ':tools' first
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}

@@ -1,0 +1,13 @@
+// Unpacks the player's own IPA into the game files. It runs on the build machine only (it needs ffmpeg on the PATH for the
+// sound and video), never inside a game.
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':core')   // shares the CGBI PNG decoding core (CgbiPixels) with the web port's own importer
+}
+
+application {
+    mainClass = 'heist.tools.IpaImporter'
+}

@@ -1,0 +1,77 @@
+// The browser port: the game (':core') compiled to WebAssembly by TeaVM, Canvas2D for drawing, Web Audio for
+// sound, the Origin Private File System for storage. Unlike every other port, the player supplies their own
+// game files at runtime (upload an .ipa in the browser) rather than at build time - there is no bundled
+// assets/ directory here.
+//   ./gradlew :web:build             TeaVM-compiles the Java side, then runs the site/ npm build
+//   ./gradlew :web:devServer         serves site/ with a live-reloading dev server (see package.json)
+plugins {
+    id 'java'
+    id 'org.teavm'
+}
+
+// TeaVM 0.16 itself needs a JDK 17+ target (the root build.gradle forces every other module to Java 8 for
+// Android compatibility and excludes this module from that rule) - this only affects how heist.web's own
+// handful of files compile, not ':core', which TeaVM recompiles from its already-built Java-8 classes.
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    implementation project(':core')
+    implementation 'org.teavm:teavm-jso-apis:0.16.0'       // typed Canvas2D/DOM/typed-array bindings
+}
+
+teavm.wasmGC {
+    mainClass = 'heist.web.Main'
+    // debug info makes the generated .wasm much bigger; useful while this port is still being built, worth
+    // turning off once the web port is otherwise finished
+    sourceMap = true
+    debugInformation = true
+}
+
+// ---- npm side --------------------------------------------------------------------------------------------
+// site/ is a separate npm project: it bundles the TeaVM output together with ffmpeg.wasm (audio/video
+// conversion the importer needs, not something TeaVM can produce) and the page itself (HTML/CSS/the little
+// JS glue that implements heist.web.JsHost - see its javadoc). Gradle only shells out to npm here; it never
+// tries to understand the JS toolchain itself.
+
+def siteDir = file('site')
+def teavmOutDir = layout.buildDirectory.dir('generated/teavm/wasm-gc')
+
+def npmInstall = tasks.register('npmInstall', Exec) {
+    workingDir = siteDir
+    inputs.file(file('site/package.json'))
+    inputs.file(file('site/package-lock.json')).optional(true)
+    outputs.dir(file('site/node_modules'))
+    commandLine 'npm', 'install'
+}
+
+// npm's own build reads the TeaVM output from site/teavm-dist/ (copied here rather than read directly out of
+// build/, so the npm project has one single, stable input directory regardless of how Gradle's own layout
+// changes between versions)
+def copyTeavmOutput = tasks.register('copyTeavmOutput', Copy) {
+    dependsOn 'buildWasmGC'
+    from(teavmOutDir)
+    into(file('site/teavm-dist'))
+}
+
+def npmBuild = tasks.register('npmBuild', Exec) {
+    dependsOn npmInstall, copyTeavmOutput
+    workingDir = siteDir
+    inputs.dir(file('site/teavm-dist'))
+    inputs.dir(file('site/src'))
+    inputs.file(file('site/package.json'))
+    outputs.dir(file('site/dist'))
+    commandLine 'npm', 'run', 'build'
+}
+
+tasks.register('devServer', Exec) {
+    dependsOn npmInstall, copyTeavmOutput
+    workingDir = siteDir
+    commandLine 'npm', 'run', 'dev'
+}
+
+tasks.named('build') {
+    dependsOn npmBuild
+}

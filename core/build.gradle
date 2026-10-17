@@ -1,0 +1,5 @@
+// The game and its engine. Pure Java 8: it may only use the java.* classes that exist on both a desktop JVM and Android,
+// and reaches the outside world through the interfaces in heist.platform and heist.engine (Gfx, Image, Fnt, InputListener).
+plugins {
+    id 'java-library'
+}

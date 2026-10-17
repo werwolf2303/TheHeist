@@ -1,0 +1,29 @@
+// One game, many ports: ':core' holds the whole game and engine and knows nothing about any platform; every other
+// module is a thin layer that supplies drawing, sound, storage, files and input for one platform.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id 'com.android.application' version '8.13.2'
+        id 'org.teavm' version '0.16.0'
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'TheHeist'
+
+include ':core'      // game + engine (pure Java 8, no platform code)
+include ':tools'     // build-time tool that unpacks the player's own IPA into game files
+include ':desktop'   // desktop port (Java2D, javax.sound)
+include ':android'   // Android port (Canvas, AudioTrack)
+include ':web'       // browser port (TeaVM -> WebAssembly, Canvas2D/WebAudio, OPFS; the player supplies their own IPA at runtime)

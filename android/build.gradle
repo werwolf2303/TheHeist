@@ -1,0 +1,101 @@
+// The Android port: Canvas for drawing, AudioTrack for sound. The game itself comes from ':core'; the player's own game
+// files are unpacked from their IPA at build time and packaged as APK assets.
+//   ./gradlew :android:assembleDebug -PheistIpa="/path/to/iPhone - The Heist.ipa"
+//   adb install -r android/build/outputs/apk/debug/android-debug.apk
+plugins {
+    id 'com.android.application'
+}
+
+// the build tool is needed on the build machine, so ':tools' is configured first
+evaluationDependsOn(':tools')
+
+android {
+    namespace 'heist.android'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.taptaptap.TheHeist'
+        minSdk 9
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    buildFeatures {
+        buildConfig true   // BuildConfig.DEBUG gates the developer menu's 3-finger-tap activation (see MainActivity)
+    }
+
+    compileOptions {
+        // coreLibraryDesugaringEnabled backports modern Java APIs (Base64, StandardCharsets, etc.) to older runtimes
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // the game files are read straight out of the APK, so they are stored uncompressed
+    androidResources {
+        noCompress 'wav', 'jpg', 'png', 'plist', 'nib', 'pex', 'ttf', 'bin'
+    }
+
+    sourceSets {
+        main.assets.srcDir layout.buildDirectory.dir('generated/heistAssets')
+        main.res.srcDir layout.buildDirectory.dir('generated/heistRes')
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    implementation project(':core')
+    // the front-camera self-view in the prize video call (see heist.platform.CameraPreview / AndroidCameraPreview)
+    def cameraxVersion = '1.3.4'
+    implementation "androidx.camera:camera-core:$cameraxVersion"
+    implementation "androidx.camera:camera-camera2:$cameraxVersion"
+    implementation "androidx.camera:camera-lifecycle:$cameraxVersion"
+}
+
+// ---- the player's own game files ------------------------------------------------------------------------------------
+// The game's pictures, sounds and levels come from YOUR copy of the iPhone game (version 1.1.2), given with
+// -PheistIpa=..., heistIpa=... in local.properties or the HEIST_IPA environment variable. The importer in ':tools' (it
+// needs ffmpeg on the PATH) unpacks it into the APK; nothing of the game is kept in this repository.
+
+def heistIpa = rootProject.ext.heistIpa
+def heistAssets = layout.buildDirectory.dir('generated/heistAssets')
+
+def importAssets = tasks.register('importHeistAssets', JavaExec) {
+    dependsOn ':tools:classes'
+    classpath = project(':tools').sourceSets.main.runtimeClasspath
+    mainClass = 'heist.tools.IpaImporter'
+    if (heistIpa && file(heistIpa).isFile()) inputs.file(heistIpa)
+    outputs.dir(heistAssets)
+    doFirst {
+        if (!heistIpa || !file(heistIpa).isFile()) {
+            throw new GradleException("The game files are missing. Build with your own copy of the game:\n" +
+                    "  ./gradlew :android:assembleDebug -PheistIpa=\"/path/to/iPhone - The Heist.ipa\"")
+        }
+        delete heistAssets
+        heistAssets.get().asFile.mkdirs()
+        args = [heistIpa, "${heistAssets.get().asFile.path}/heist"]
+    }
+}
+
+// the launcher icon is the game's own icon, taken from the same IPA
+def heistRes = layout.buildDirectory.dir('generated/heistRes')
+def iconTask = tasks.register('copyHeistIcon', Copy) {
+    dependsOn importAssets
+    from(heistAssets.map { it.file('heist/Icon@2x.png') })
+    rename { 'ic_launcher_art.png' }
+    into(heistRes.map { it.dir('drawable-nodpi') })
+}
+
+tasks.matching { it.name == 'preBuild' }.configureEach { dependsOn importAssets, iconTask }

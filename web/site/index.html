@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>The Heist</title>
+  <link rel="icon" href="icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16181b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="The Heist" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <style>
+    /* ---- reset ---- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ---- iOS 5 linen / gunmetal foundation ---- */
+    html, body {
+      height: 100%;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background-color: #1a1c1f;
+      /* linen-like noise over a dark gunmetal gradient */
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #1e2125 0%, #16181b 60%, #0f1012 100%);
+      color: #e8e8e8;
+      overflow: hidden;
+    }
+
+    /* ---- full-screen layout ---- */
+    #screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 0;
+      padding: 24px 20px;
+    }
+
+    /* ---- lockup: icon + title ---- */
+    .lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .vault-icon {
+      width: 114px;
+      height: 114px;
+      border-radius: 26px;
+      box-shadow:
+        0 2px 0 rgba(255,255,255,0.12) inset,
+        0 8px 24px rgba(0,0,0,0.8),
+        0 0 0 1px rgba(0,0,0,0.6);
+      display: block;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: #d8dde5;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 20px rgba(90,200,255,0.12);
+    }
+    h1 strong {
+      font-weight: 700;
+      color: #eef2f7;
+    }
+
+    /* ---- iOS-5-style panel (rounded rect with inner shadow + border) ---- */
+    .panel {
+      width: 100%;
+      max-width: 320px;
+      background: linear-gradient(180deg, #2c2f34 0%, #22252a 100%);
+      border-radius: 12px;
+      border: 1px solid #3e424a;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.06) inset,
+        0 -1px 0 rgba(0,0,0,0.4) inset,
+        0 8px 24px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+
+    /* ---- big "Play" button — glossy iOS 5 pill ---- */
+    #play-step { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 320px; }
+
+    .btn-play {
+      display: block;
+      width: 100%;
+      padding: 15px 0;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #fff;
+      text-shadow: 0 -1px 1px rgba(0,0,0,0.5);
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,0.18) 0%,
+          rgba(255,255,255,0.04) 48%,
+          rgba(0,0,0,0.0) 49%,
+          rgba(0,0,0,0.0) 100%),
+        linear-gradient(180deg, #2e90c8 0%, #1a6fa8 50%, #155e90 51%, #1a7ab8 100%);
+      border-top: 1px solid rgba(255,255,255,0.2);
+      border-bottom: 1px solid rgba(0,0,0,0.4);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.15) inset,
+        0 4px 12px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(0,0,0,0.3);
+      transition: filter 0.08s;
+    }
+    .btn-play:active { filter: brightness(0.85); }
+    .btn-play:disabled { opacity: 0.45; cursor: default; }
+
+    /* ---- upload panel contents ---- */
+    #upload-step {
+      display: none;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      max-width: 320px;
+      gap: 0;
+    }
+
+    .upload-body {
+      padding: 16px 16px 14px;
+    }
+
+    .upload-body p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #8e9299;
+    }
+    .upload-body p strong { color: #c2c8d0; font-weight: 600; }
+
+    /* iOS 5 table-row style separator */
+    .row-sep {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #3a3d42 15%, #3a3d42 85%, transparent);
+      margin: 0;
+    }
+
+    .upload-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      gap: 12px;
+    }
+
+    .upload-row label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #c8cdd5;
+      white-space: nowrap;
+    }
+
+    /* hidden real file input; we show a styled fake button */
+    #file-input { display: none; }
+
+    .btn-choose {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      text-shadow: 0 -1px 1px rgba(0,0,0,0.4);
+      cursor: pointer;
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,0.16) 0%,
+          rgba(255,255,255,0.03) 48%,
+          rgba(0,0,0,0.0) 49%,
+          rgba(0,0,0,0.0) 100%),
+        linear-gradient(180deg, #3a3d42 0%, #2a2d31 100%);
+      border: 1px solid #50545c;
+      border-bottom-color: #1a1c1f;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 2px 4px rgba(0,0,0,0.4);
+      transition: filter 0.08s;
+      white-space: nowrap;
+    }
+    .btn-choose:active { filter: brightness(0.82); }
+
+    .chosen-name {
+      font-size: 12px;
+      color: #5a8fba;
+      padding: 0 16px 12px;
+      word-break: break-all;
+      display: none;
+    }
+
+    .hint-row {
+      padding: 0 16px 14px;
+      font-size: 11px;
+      color: #555a62;
+      line-height: 1.5;
+    }
+    .hint-row a {
+      color: #4a7eaa;
+      text-decoration: none;
+    }
+    .hint-row a:hover { text-decoration: underline; }
+
+    /* ---- progress bar — iOS 5 style (dark track, blue fill, inner bevel) ---- */
+    #progress-bar {
+      width: 100%;
+      max-width: 320px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .progress-track {
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #101214 0%, #1e2125 100%);
+      border: 1px solid #2a2d31;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset;
+      overflow: hidden;
+    }
+
+    #progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,0.3) 0%,
+          rgba(255,255,255,0.08) 48%,
+          rgba(0,0,0,0.0) 49%,
+          rgba(0,0,0,0.1) 100%),
+        linear-gradient(180deg, #4ab0e8 0%, #2888c8 50%, #1e6faa 51%, #2a88cc 100%);
+      box-shadow: 0 0 8px rgba(90,180,255,0.5);
+      transition: width 0.25s ease-out;
+    }
+
+    #progress-text {
+      font-size: 12px;
+      color: #5c6370;
+      text-align: center;
+      min-height: 1.4em;
+      letter-spacing: 0.02em;
+    }
+
+    /* ---- error ---- */
+    #error-text {
+      display: none;
+      width: 100%;
+      max-width: 320px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #2e1a1a 0%, #221212 100%);
+      border: 1px solid #4a2828;
+      box-shadow: 0 1px 0 rgba(255,80,80,0.08) inset, 0 4px 12px rgba(0,0,0,0.5);
+      font-size: 12px;
+      line-height: 1.5;
+      color: #d07070;
+      white-space: pre-wrap;
+      margin-top: 8px;
+    }
+
+    /* ---- game canvas ---- */
+    #game-canvas-holder {
+      display: none;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+    #game-canvas-holder canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="screen">
+
+    <div class="lockup">
+      <img class="vault-icon" src="icon.png" alt="The Heist" width="114" height="114" />
+      <h1><strong>The</strong> <strong>Heist</strong></h1>
+    </div>
+
+    <!-- play button -->
+    <div id="play-step">
+      <button class="btn-play" id="play-button">Play</button>
+    </div>
+
+    <!-- upload panel -->
+    <div id="upload-step" class="panel">
+      <div class="upload-body">
+        <p>This site doesn't include the game — upload your own decrypted copy of <strong>The Heist</strong> (.ipa) to play.</p>
+      </div>
+      <div class="row-sep"></div>
+      <div class="upload-row">
+        <label for="file-input-trigger">.ipa file</label>
+        <label class="btn-choose" id="file-input-trigger" tabindex="0">Choose file</label>
+        <input id="file-input" type="file" accept=".ipa" />
+      </div>
+      <div class="chosen-name" id="chosen-name"></div>
+      <div class="row-sep"></div>
+      <div class="hint-row">
+        The .ipa must be decrypted.
+      </div>
+    </div>
+
+    <!-- progress -->
+    <div id="progress-bar">
+      <div class="progress-track"><div id="progress-fill"></div></div>
+      <div id="progress-text"></div>
+    </div>
+
+    <!-- error -->
+    <div id="error-text"></div>
+
+  </div>
+
+  <div id="game-canvas-holder"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

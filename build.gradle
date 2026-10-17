@@ -1,0 +1,31 @@
+// Shared by every module. Platform modules are chained to ':core' by a plain project dependency, so adding or building a
+// port never needs a change here.
+
+// The player's own copy of the iPhone game (version 1.1.2). Give it with -PheistIpa=..., the HEIST_IPA environment
+// variable or heistIpa=... in local.properties. Nothing of the game is part of this repository.
+def localProps = new Properties()
+def lp = file('local.properties')
+if (lp.isFile()) lp.withInputStream { localProps.load(it) }
+ext.heistIpa = (findProperty('heistIpa') ?: System.getenv('HEIST_IPA') ?: localProps.getProperty('heistIpa')) as String
+
+subprojects {
+    group = 'heist'
+    version = '1.0.0'
+
+    // :web is excluded: it compiles ':core' through TeaVM, which needs a much newer JDK target (17+) to run
+    // itself - the Java *language level* of the game's own source (heist.* packages) is unaffected by this,
+    // since TeaVM recompiles the already-built, Java-8-compatible core-1.0.0.jar, not its source.
+    if (name == 'web') return
+
+    plugins.withType(JavaPlugin) {
+        java {
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+        }
+        tasks.withType(JavaCompile).configureEach {
+            options.release = 8
+            options.encoding = 'UTF-8'
+            options.compilerArgs << '-Xlint:-options'
+        }
+    }
+}

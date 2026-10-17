@@ -1,0 +1,20 @@
+{
+  "name": "theheist-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "The browser port of The Heist: bundles the TeaVM-compiled game with ffmpeg.wasm (for converting the player's own uploaded game files) and the page shell.",
+  "scripts": {
+    "prebuild": "mkdir -p public/assets && cp node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js public/assets/ffmpeg-core-esm.js && cp node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm public/assets/ffmpeg-core-esm.wasm && cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js public/assets/ffmpeg-core.js && cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.wasm public/assets/ffmpeg-core.wasm",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1",
+    "vite": "^8.3.4"
+  }
+}
